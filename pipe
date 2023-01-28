@@ -1,0 +1,29 @@
+j=16
+echo ${j}
+
+for i in `grep SRR srr_acc_list.txt`
+do
+fastp -i ./raw/${i}_1.fastq.gz  -o  ./trim/${i}_trim_1.fastq.gz -I ./raw/${i}_2.fastq.gz -O ./trim/${i}_trim_2.fastq.gz -w ${j} -j ./trim/${i}.json -h ./trim/${i}.html -q 20 --length_required 20
+done
+
+for i in `cat srr_acc_list.txt`
+do
+echo ${i}
+hisat2 -x ~/index/hisat2_index/rrna_index/rrna  -1 ./trim/${i}_trim_1.fastq.gz -2 ./trim/${i}_trim_2.fastq.gz \
+-p 18 --rna-strandness RF --summary-file ~/ead/mongolian_hcc_tissue/rrna_hisat/${i}.log \
+--un-conc-gz ~/ead/mongolian_hcc_tissue/rrna_hisat/${i}_puri_R%.fastq.gz -S ${i}_rRNA.sam; rm ${i}_rRNA.sam;
+done
+
+j=20
+for i in `cat srr_acc_list.txt`
+do
+echo $i
+hisat2 -t -x ~/index/hisat2_index/ucsc_hg38/genome -1 ./rrna_hisat/${i}_puri_R1.fastq.gz  -2 ./rrna_hisat/${i}_puri_R2.fastq.gz --summary-file ./map/${i}.log -S 
+./map/${i}.sam -p ${j} --rna-strandness RF
+date
+sambamba view -S -t ${j} -f bam -o ./map/${i}.bam ./map/${i}.sam
+sambamba sort  -t ${j} -m 20G -o ./map/${i}.sort.bam ./map/${i}.bam
+rm ./map/${i}.sam
+date
+#time
+done
